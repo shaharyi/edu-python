@@ -1,12 +1,13 @@
 def H(n, src, tmp, dst):
   global L,p
   if n > 0:
-    moves = H(n-1, src, dst, tmp)
+    moves1 = H(n-1, src, dst, tmp)
     print(f'move disk {n} from {L[src]} to {L[dst]}')
     p[src] -= 1
     p[dst] += 1    
     print(p)
-    return 1 + moves + H(n-1, tmp, src, dst)
+    moves2 = H(n-1, tmp, src, dst)
+    return 1 + moves1 + moves2
   return 0
 
 L = 'abc'
