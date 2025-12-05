@@ -82,9 +82,9 @@ class Snake:
 
 pygame.init()
 
-CELL_SIZE = 20
-GRID_WIDTH = 30
-GRID_HEIGHT = 20
+CELL_SIZE = 40
+GRID_WIDTH = 50
+GRID_HEIGHT = 30
 
 WIDTH = GRID_WIDTH * CELL_SIZE
 HEIGHT = GRID_HEIGHT * CELL_SIZE
@@ -120,14 +120,49 @@ def draw_cell(pos, color):
     )
 
 
+def movement(direction, key):
+    dx, dy = direction
+    if key == pygame.K_UP:
+        if dy != 1:
+            direction = (0, -1)
+    elif key == pygame.K_DOWN:
+        if dy != -1:
+            direction = (0, 1)
+    elif key == pygame.K_LEFT:
+        if dx != 1:
+            direction = (-1, 0)
+    elif key == pygame.K_RIGHT:
+        if dx != -1:
+            direction = (1, 0)
+    return direction
+
+
+def draw_game_over(score):
+    screen.fill(COLOR_BG)
+    game_over_text = FONT.render("Game Over!", True, COLOR_TEXT)
+    score_text = FONT.render(f"Score: {score}", True, COLOR_TEXT)
+    hint_text = FONT.render("Press R to Restart | ESC to Quit", True, COLOR_TEXT)
+
+    screen.blit(game_over_text,
+                (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 2 - 60))
+    screen.blit(score_text,
+                (WIDTH // 2 - score_text.get_width() // 2, HEIGHT // 2 - 20))
+    screen.blit(hint_text,
+                (WIDTH // 2 - hint_text.get_width() // 2, HEIGHT // 2 + 20))
+
+    pygame.display.flip()
+
+
+def reset():
+    start_pos = (GRID_WIDTH // 2, GRID_HEIGHT // 2)
+    snake = Snake(start_pos)
+    direction = (1, 0)
+    food_pos = random_food_position(snake)
+    score = 0
+    return snake, direction, food_pos, score
+
+
 def main():
-    def reset():
-        start_pos = (GRID_WIDTH // 2, GRID_HEIGHT // 2)
-        snake = Snake(start_pos)
-        direction = (1, 0)
-        food_pos = random_food_position(snake)
-        score = 0
-        return snake, direction, food_pos, score
 
     snake, direction, food_pos, score = reset()
 
@@ -137,7 +172,7 @@ def main():
     while running:
         clock.tick(10)
 
-        # ---------- Handle Events ----------
+        # ------- Handle Events -------
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -151,72 +186,46 @@ def main():
                         # Restart the entire game
                         snake, direction, food_pos, score = reset()
                         game_over = False
-                    continue
+                else:                    
+                    direction = movement(direction, event.key)
 
-                # ----- Movement -----
-                dx, dy = direction
-                if event.key == pygame.K_UP:
-                    if dy != 1:
-                        direction = (0, -1)
-                elif event.key == pygame.K_DOWN:
-                    if dy != -1:
-                        direction = (0, 1)
-                elif event.key == pygame.K_LEFT:
-                    if dx != 1:
-                        direction = (-1, 0)
-                elif event.key == pygame.K_RIGHT:
-                    if dx != -1:
-                        direction = (1, 0)
-
-        # ---------- Drawing Game Over ----------
         if game_over:
+            draw_game_over(score)
+            
+        elif running:
+
+            # ---------- Game Logic ----------
+            head_x, head_y = snake.get_head_pos()
+            dx, dy = direction
+            new_head_pos = (head_x + dx, head_y + dy)
+
+            # Wall or self collision
+            x, y = new_head_pos
+            if x < 0 or x >= GRID_WIDTH or y < 0 or y >= GRID_HEIGHT or snake.contains(new_head_pos):
+                game_over = True
+            else:
+                ate_food = (new_head_pos == food_pos)
+                snake.move_to(new_head_pos, grow=ate_food)
+
+                if ate_food:
+                    score += 1
+                    food_pos = random_food_position(snake)
+
+            # ---------- Drawing ----------
             screen.fill(COLOR_BG)
-            game_over_text = FONT.render("Game Over!", True, COLOR_TEXT)
-            score_text = FONT.render(f"Score: {score}", True, COLOR_TEXT)
-            hint_text = FONT.render("Press R to Restart | ESC to Quit", True, COLOR_TEXT)
 
-            screen.blit(game_over_text,
-                        (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 2 - 60))
-            screen.blit(score_text,
-                        (WIDTH // 2 - score_text.get_width() // 2, HEIGHT // 2 - 20))
-            screen.blit(hint_text,
-                        (WIDTH // 2 - hint_text.get_width() // 2, HEIGHT // 2 + 20))
+            # Food
+            draw_cell(food_pos, COLOR_FOOD)
 
+            # Snake
+            for pos in snake.get_positions():
+                draw_cell(pos, COLOR_SNAKE)
+
+            # Score
+            score_surf = FONT.render(f"Score: {score}", True, COLOR_TEXT)
+            screen.blit(score_surf, (10, 10))
+            
             pygame.display.flip()
-            continue
-
-        # ---------- Game Logic ----------
-        head_x, head_y = snake.get_head_pos()
-        dx, dy = direction
-        new_head_pos = (head_x + dx, head_y + dy)
-
-        # Wall or self collision
-        x, y = new_head_pos
-        if x < 0 or x >= GRID_WIDTH or y < 0 or y >= GRID_HEIGHT or snake.contains(new_head_pos):
-            game_over = True
-        else:
-            ate_food = (new_head_pos == food_pos)
-            snake.move_to(new_head_pos, grow=ate_food)
-
-            if ate_food:
-                score += 1
-                food_pos = random_food_position(snake)
-
-        # ---------- Drawing ----------
-        screen.fill(COLOR_BG)
-
-        # Food
-        draw_cell(food_pos, COLOR_FOOD)
-
-        # Snake
-        for pos in snake.get_positions():
-            draw_cell(pos, COLOR_SNAKE)
-
-        # Draw score
-        score_surf = FONT.render(f"Score: {score}", True, COLOR_TEXT)
-        screen.blit(score_surf, (10, 10))
-        
-        pygame.display.flip()
 
     pygame.quit()
     sys.exit()
